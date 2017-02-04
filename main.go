@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/nlopes/slack"
 	"io/ioutil"
 	"os"
@@ -14,19 +14,26 @@ func main() {
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			fmt.Println("Please create a config file with your api key")
+			fmt.Println("Please create a config file with your Slack api key")
 		}
 		return
 	}
-	fmt.Println(string(config))
 	token := strings.TrimPrefix(string(config), "token: ")
 	token = strings.TrimSpace(token)
 	api := slack.New(token)
-	spew.Dump(api)
 	users, err := api.GetUsers()
 	if err != nil {
 		fmt.Println("errr: ", err)
 		return
 	}
-	spew.Dump(users)
+	for _, user := range users {
+		// Ignore bots
+		if !user.IsBot {
+			// Check if presence empty (slackbot is special case)
+			if user.Presence != "" {
+				fmt.Println(user.Name)
+				fmt.Println(user.Presence)
+			}
+		}
+	}
 }
