@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	//"github.com/davecgh/go-spew/spew"
+	//	"github.com/davecgh/go-spew/spew"
 	"github.com/nlopes/slack"
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -26,13 +27,33 @@ func main() {
 		fmt.Println("errr: ", err)
 		return
 	}
+	fmt.Printf("date, ")
 	for _, user := range users {
-		// Ignore bots
 		if !user.IsBot {
-			// Check if presence empty (slackbot is special case)
-			if user.Presence != "" {
-				fmt.Println(user.Name)
-				fmt.Println(user.Presence)
+			fmt.Printf(user.Name)
+			fmt.Printf(", ")
+		}
+	}
+
+	// TODO fix this to not run forever
+	t := time.Now()
+	for t.Month() < 100 {
+		t := time.Now()
+		time.Sleep(100 * time.Millisecond)
+		// run this every x seconds
+		fmt.Println()
+		fmt.Printf("%d\n", t.Second())
+		// run this and keep it running
+		for _, user := range users {
+			// Ignore bots
+
+			if !user.IsBot {
+				// Check if presence empty (slackbot is special case)
+				if user.Presence != "" {
+					fmt.Printf(user.Presence)
+					// Todo don't print if this is last user
+					fmt.Printf(", ")
+				}
 			}
 		}
 	}
