@@ -11,32 +11,35 @@ import (
 	"time"
 )
 
-func main() {
-	// Setup stuff TODO move to setup function
+func setup() (*slack.Client, []slack.User) {
+
 	config, err := ioutil.ReadFile("config.yml")
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
 			fmt.Println("Please create a config file with your Slack api key")
 		}
-		return
 	}
 	token := strings.TrimPrefix(string(config), "token: ")
 	token = strings.TrimSpace(token)
-	api := slack.New(token)
+	apiClient := slack.New(token)
 	//api.SetDebug(true)
-	users, err := api.GetUsers()
+	users, err := apiClient.GetUsers()
 	if err != nil {
 		fmt.Println("Slack api error: ", err)
-		return
 	}
+	return apiClient, users
+}
+
+func boltSetup(users []slack.User) *bolt.DB {
+
 	db, err := bolt.Open("slacktracker.db", 0600, nil)
 	if err != nil {
-		fmt.Println("Bolt DB not working, maybe forgot to run go get? Err: ", err)
+		fmt.Println("Bolt DB error when opening: ", err)
 	}
+	spew.Dump(db)
 	defer db.Close()
 
-	// TODO actual meat move?
 	fmt.Printf("date, ")
 	for _, user := range users {
 		if user.Presence != "" {
@@ -55,6 +58,13 @@ func main() {
 			fmt.Printf(", ")
 		}
 	}
+	return db
+}
+
+func main() {
+	var apiClient, users = setup()
+	var boltDB = boltSetup(users)
+	spew.Dump(boltDB)
 
 	// Idea being to open 1 channel per user (is this sustainable for large numbers?)
 	// DOes it work with bolt more importantly?
@@ -68,7 +78,8 @@ func main() {
 		fmt.Println("")
 		fmt.Printf(time.Now().Format(time.RFC3339))
 		fmt.Printf(",")
-		users, err := api.GetUsers()
+		// Refresh users with new data
+		users, err := apiClient.GetUsers()
 		if err != nil {
 			spew.Dump(users)
 			spew.Dump(err)
