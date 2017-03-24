@@ -47,7 +47,7 @@ func boltSetup(users []slack.User) *bolt.DB {
 			// Do we need to react to users we haven't seen before differently?
 			// Probably only want to run this sporadically
 			db.Update(func(tx *bolt.Tx) error {
-				userBucket, err := tx.CreateBucket([]byte(user.Name))
+				userBucket, err := tx.CreateBucketIfNotExists([]byte(user.Name))
 				if err != nil {
 					return fmt.Errorf("create bucket: %s", err)
 				}
@@ -70,13 +70,14 @@ func main() {
 	// DOes it work with bolt more importantly?
 
 	starttime := time.Now()
-	var runlength time.Duration = 5000 * time.Second
+	runlength := 5000 * time.Second
 	// Note, any value less than 15 seconds for frequency may get time out from slack API
-	var frequency time.Duration = 15 * time.Second
+	frequency := 15 * time.Second
 	for time.Since(starttime) < runlength {
 		time.Sleep(frequency)
 		fmt.Println("")
-		fmt.Printf(time.Now().Format(time.RFC3339))
+		timestamp := time.Now().Format(time.RFC3339)
+		fmt.Printf(timestamp)
 		fmt.Printf(",")
 		// Refresh users with new data
 		users, err := apiClient.GetUsers()
@@ -87,8 +88,13 @@ func main() {
 		for _, user := range users {
 			// Ignore bots
 			if !user.IsBot {
-				// Check if presence empty (slackbot is special case)
+				// Check if presence empty (slackbot is a special Bot case apparently)
 				if user.Presence != "" {
+					boltDB.Update(func(tx *bolt.Tx) error {
+						bucket := tx.Bucket([]byte(user.Name))
+						err := bucket.Put([]byte(timestamp), []byte(user.Presence))
+						return err
+					})
 					fmt.Printf(user.Presence)
 					// Todo don't print if this is last user
 					fmt.Printf(", ")
